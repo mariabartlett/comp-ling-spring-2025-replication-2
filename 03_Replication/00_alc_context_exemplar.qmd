@@ -36,8 +36,7 @@ set.seed(12345)
 library(tidyverse)
 library(conText)
 library(quanteda)
-library(cluster)
-library(assertr)
+library(kableExtra)
 
 # set processing/display options
 options(mc.cores = parallel::detectCores())
@@ -47,6 +46,16 @@ options(warn = -1)
 # set relative paths
 root       <- file.path(getwd() %>% dirname())
 author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
+
+# define kable styling options
+kable_style <- function(df) {
+  
+  df %>%
+  kbl(full_width = T, 
+      align = "l",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("repeat_header","scale_down","HOLD_position")) 
+}
 
 ```
 
@@ -82,6 +91,8 @@ stopifnot(nrow(transform_matrix) == 300 & ncol(transform_matrix) == 300)
 ```
 
 ### Analysis: Semantic shift of Trump
+
+#### Preprocessing
 
 ```{r}
 #| warning: false
@@ -120,9 +131,14 @@ sub_corpus$text <- sub_corpus$text %>%
   str_replace_all("^ +| +$|( ) +", "\\1") %>% # remove excess white space
   tolower() # lowercase
 
-#---------------------------------
-# conText regression
-#---------------------------------
+```
+
+#### conText regression
+
+```{r}
+#| warning: false
+#| output: asis
+#| code-fold: false
 
 # add dummy variables distinguishing pre-/post-election years and trump/clinton mentions
 sub_corpus <- sub_corpus %>% mutate(post_election = if_else(year>2014, 1L, 0L))
@@ -135,6 +151,7 @@ toks <- tokens(sub_corpus)
 
 # run regression
 set.seed(2022L)
+
 model1 <- conText(formula =  toi ~ trump + post_election + interaction, 
                   data = toks, 
                   pre_trained = pre_trained, 
@@ -151,14 +168,20 @@ model1 <- conText(formula =  toi ~ trump + post_election + interaction,
                   valuetype = 'fixed', 
                   case_insensitive = TRUE, 
                   hard_cut = FALSE, 
-                  verbose = TRUE)
-
-#---------------------------------
-# visualize
-#---------------------------------
+                  verbose = FALSE)
 
 # read results
-model1@normed_coefficients
+model1@normed_coefficients %>%
+  kable_style()
+
+```
+
+#### Coefficient plot
+
+```{r}
+#| warning: false
+#| output: asis
+#| code-fold: false
 
 # coefficient plot
 plot_tibble <- model1@normed_coefficients %>% 

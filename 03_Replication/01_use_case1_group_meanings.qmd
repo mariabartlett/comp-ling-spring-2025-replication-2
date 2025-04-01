@@ -36,7 +36,7 @@ set.seed(12345)
 library(tidyverse)
 library(conText)
 library(quanteda)
-library(assertr)
+library(kableExtra)
 
 # set processing/display options
 options(mc.cores = parallel::detectCores())
@@ -46,6 +46,16 @@ options(warn = -1)
 # set relative paths
 root       <- file.path(getwd() %>% dirname())
 author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
+
+# define kable styling options
+kable_style <- function(df) {
+  
+  df %>%
+  kbl(full_width = T, 
+      align = "l",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("repeat_header","scale_down","HOLD_position")) 
+}
 
 ```
 
@@ -81,9 +91,9 @@ stopifnot(nrow(transform_matrix) == 300 & ncol(transform_matrix) == 300)
 
 ```
 
-### Preprocessing
+### Analysis: Differences in word meanings by gender and party
 
-Figure 4/table 4/table 5
+#### Preprocessing
 
 ```{r }
 #| warning: false
@@ -94,7 +104,7 @@ cr_toks <- tokens(cr_corpus, remove_punct = T, remove_symbols = T, remove_number
 
 ```
 
-### conText Regressions
+#### conText Regressions
 
 ```{r }
 #| warning: false
@@ -129,7 +139,7 @@ for(target in targets){
                       valuetype = 'fixed', 
                       case_insensitive = TRUE, 
                       hard_cut = FALSE, 
-                      verbose = TRUE)
+                      verbose = FALSE)
   }
   
   else{
@@ -149,8 +159,10 @@ for(target in targets){
                       valuetype = 'fixed', 
                       case_insensitive = TRUE, 
                       hard_cut = FALSE, 
-                      verbose = TRUE)
+                      verbose = FALSE)
   }
+  
+  model1@normed_coefficients %>% kable_style()
   
   models[[target]] <- model1
   cat("done with", target, "\n")
@@ -163,7 +175,7 @@ normed_cofficients <- normed_cofficients %>% mutate(target = factor(target, leve
 
 ```
 
-### Difference in word meaning by party (figure 5)
+#### Difference in word meaning by party (figure 5)
 
 ```{r}
 #| warning: false
@@ -189,7 +201,7 @@ ggplot(normed_cofficients, aes(coefficient, shape = coefficient)) +
 
 ```
 
-### Nearest neighbors
+#### Nearest neighbors
 
 ```{r}
 #| warning: false
@@ -227,12 +239,17 @@ immigrationD <- model1["(Intercept)",]
 nns_R <- nns(immigrationR, pre_trained = pre_trained, N = 10, candidates = model1@features, as_list = FALSE)
 nns_D <- nns(immigrationD, pre_trained = pre_trained, N = 10, candidates = model1@features, as_list = FALSE)
 
-nns_R
-nns_D
+nns_R %>% kable_style()
+nns_D %>% kable_style()
 
-#---------------------------------
-# nearest contexts
-#---------------------------------
+```
+
+#### Nearest contexts
+
+```{r}
+#| warning: false
+#| output: asis
+#| code-fold: false
 
 # tokenize docs
 immig_toks <- tokens_context(cr_toks, pattern = 'immigration', window = 6L, hard_cut = FALSE)
@@ -259,7 +276,7 @@ ncs_D <- ncs(x = immig_wv_party["D",],
              N = 5, 
              as_list = FALSE)
 
-ncs_R
-ncs_D
+ncs_R %>% kable_style()
+ncs_D %>% kable_style()
 
 ```
