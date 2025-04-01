@@ -1,6 +1,6 @@
 ---
 title: "Replication Code: A Replication of _Embedding Regression: Models for Context-Specific Description and Inference_ (Rodriguez et al., 2023)"
-subtitle: "PPOL 6801: Text as Data: Computational Linguistics"
+subtitle: "Analysis of Trump semantic shift"
 author: "Bridgette Sullivan & Maria Bartlett"
 date: "`r Sys.Date()`"
 format: html
@@ -50,7 +50,7 @@ author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
 
 ```
 
-#### Load data
+### Load data
 
 ```{r}
 #| warning: false
@@ -62,9 +62,10 @@ author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
 # --------------------------------
 
 # nyt corpus
-corpus_nyt <- readRDS(file.path(author_rep,"data","fg03_corpus.rds"))
+corpus_nyt <- readRDS(file.path(author_rep,"data","nyt_data.rds"))
 
-stopifnot(length(corpus_nyt) == 15037)  # contains 15,037 lead paragraphs from articles
+# in 2018 lead_paragraph is missing
+corpus_nyt$lead_paragraph[is.na(corpus_nyt$lead_paragraph)] <- corpus_nyt$snippet[is.na(corpus_nyt$lead_paragraph)] 
 
 # pre-trained GloVe embeddings 
 pre_trained <- readRDS(file.path(author_rep,"data","stanford-glove","glove.rds"))
@@ -80,106 +81,7 @@ stopifnot(nrow(transform_matrix) == 300 & ncol(transform_matrix) == 300)
 
 ```
 
-#### ALC embedding
-
-```{r}
-#| warning: false
-#| output: asis
-#| code-fold: false
-
-# --------------------------------
-# ALC embed
-# --------------------------------
-
-# tokenize corpus
-toks <- tokens(corpus_nyt, 
-               remove_punct = T, 
-               remove_symbols = T, 
-               remove_numbers = T, 
-               remove_separators = T)
-
-# examine structure of tokenized corpus
-toks
-
-# build a tokenized corpus of contexts sorrounding the target
-trump_toks <- tokens_context(x = toks, 
-                             pattern = c('trump', 'Trump'), 
-                             valuetype = "fixed", 
-                             window = 6L, 
-                             case_insensitive = FALSE, 
-                             hard_cut = TRUE,
-                             verbose = FALSE)
-
-# there is one instance where both Trump and trump appear, hence target!=pattern
-trump_toks <- tokens_subset(trump_toks, target == pattern) 
-
-# sample 400 instances of each sense (there are 403 instances of trump)
-set.seed(2022L)
-trump_toks_sample <- tokens_sample(x = trump_toks, size = 400, replace = FALSE, by = docvars(trump_toks,'target'))
-
-# build a document-feature-matrix
-trump_dfm <- dfm(trump_toks_sample, tolower = TRUE)
-
-# embed each instance using ALC
-trump_dem <- dem(x = trump_dfm, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, verbose = FALSE)
-
-# force individual data points into two clusters
-trump_clusters <- kmeans(trump_dem, 2, nstart = 100)
-
-# find principal components using pca
-trump_pca <- prcomp(trump_dem, scale = TRUE)
-
-# first two pcs
-ind_coord <- as_tibble(trump_pca$x[,1:2])
-
-# tibble for plotting
-plot_tibble <- tibble(doc_id = 1:length(trump_toks_sample), ind_coord, text = unname(sapply(trump_toks_sample, function(i) paste0(i, collapse = " "))), target = docvars(trump_toks_sample, 'target'), cluster = unname(trump_clusters$cluster))
-
-# identify majority label in each cluster and misclassification
-trump_cluster <- which(as.vector(table(plot_tibble$target, plot_tibble$cluster)['trump',]) == max(table(plot_tibble$target, plot_tibble$cluster)['trump',]))
-Trump_cluster <- which(as.vector(table(plot_tibble$target, plot_tibble$cluster)['Trump',]) == max(table(plot_tibble$target, plot_tibble$cluster)['Trump',]))
-plot_tibble <- plot_tibble %>% mutate(cluster = if_else((target == 'trump' & cluster!=trump_cluster) | (target == 'Trump' & cluster!=Trump_cluster), 3L, cluster))
-plot_tibble <- plot_tibble %>% mutate(target = if_else(cluster == 3L, 'misclassified', target))
-plot_tibble <- plot_tibble %>% mutate(target = factor(target, levels = c('trump', 'misclassified', 'Trump')))
-
-```
-
-Figure 2
-
-```{r}
-#| warning: false
-#| output: asis
-#| code-fold: false
-
-# --------------------------------
-# plot
-# --------------------------------
-ggplot(plot_tibble, aes(x = PC1, y = PC2, color = target, shape = target)) +  
-  geom_point(size = 4) +
-  geom_hline(yintercept = 0, linetype="dashed", color = "black", size = 0.5) + 
-  geom_vline(xintercept = 0, linetype="dashed", color = "black", size = 0.5) +
-  scale_colour_manual(labels = c('Trump', 'misclassified', 'trump'),
-                      values = c("red", "grey20", "blue")) +   
-  scale_shape_manual(labels = c('Trump', 'misclassified', 'trump'),
-                     values = c(19, 4, 17)) +
-  xlab('PC1') + ylab('PC2') +
-  #xlim(-12, 12) + ylim(-10,10) +
-  theme(panel.background = element_blank(),
-        axis.text.x = element_text(size=18),
-        axis.text.y = element_text(size=18),
-        axis.title.y = element_text(size=20, margin = margin(t = 0, r = 15, b = 0, l = 15)),
-        axis.title.x = element_text(size=20, margin = margin(t = 15, r = 0, b = 15, l = 0)),
-        legend.text=element_text(size=18),
-        legend.title=element_blank(),
-        legend.key=element_blank(),
-        legend.position = "top",
-        legend.spacing.x = unit(0.25, 'cm'))
-
-```
-
-#### Semantic shift of Trump
-
-Figure 4
+### Analysis: Semantic shift of Trump
 
 ```{r}
 #| warning: false
@@ -190,8 +92,22 @@ Figure 4
 targets <- c('Trump', 'Clinton')
 
 # keep only documents where the target words appear
-trump_corpus <- corpus_nyt[grep('Trump', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), c('lead_paragraph', 'year')] %>% distinct(lead_paragraph, .keep_all = TRUE) %>% filter(year %in% c(2011:2014,2017:2020)) %>% rename(text = lead_paragraph) %>% mutate(target = 'trump', year = as.integer(year)) # uppercase matters here
-clinton_corpus <- corpus_nyt[grep('Clinton', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), c('lead_paragraph', 'year')] %>% distinct(lead_paragraph, .keep_all = TRUE) %>% filter(year %in% c(2011:2014,2017:2020)) %>% rename(text = lead_paragraph) %>% mutate(target = 'clinton', year = as.integer(year)) # uppercase matters here
+trump_corpus <- corpus_nyt[grep('Trump', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), 
+                           c('lead_paragraph', 'year')] %>% 
+  distinct(lead_paragraph, .keep_all = TRUE) %>% 
+  filter(year %in% c(2011:2014,2017:2020)) %>% 
+  rename(text = lead_paragraph) %>% 
+  mutate(target = 'trump', 
+         year = as.integer(year)) # uppercase matters here
+
+clinton_corpus <- corpus_nyt[grep('Clinton', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), 
+                             c('lead_paragraph', 'year')] %>% 
+  distinct(lead_paragraph, .keep_all = TRUE) %>% 
+  filter(year %in% c(2011:2014,2017:2020)) %>% 
+  rename(text = lead_paragraph) %>% 
+  mutate(target = 'clinton', 
+         year = as.integer(year)) # uppercase matters here
+
 sub_corpus <- rbind(trump_corpus, clinton_corpus)
 
 # basic preprocessing of text
@@ -219,22 +135,37 @@ toks <- tokens(sub_corpus)
 
 # run regression
 set.seed(2022L)
-model1 <- conText(formula =  toi ~ trump + post_election + interaction, data = toks, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 1000, confidence_level = 0.95, stratify = TRUE, permute = TRUE, num_permutations = 100, window = 6, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
-
-# save results
-saveRDS(model1, 'data/fg04_output.rds')
+model1 <- conText(formula =  toi ~ trump + post_election + interaction, 
+                  data = toks, 
+                  pre_trained = pre_trained, 
+                  transform = TRUE, 
+                  transform_matrix = transform_matrix, 
+                  bootstrap = TRUE, 
+                  jackknife = FALSE,  # MB update: needed to explicitly update to jackknife = FALSE (default is true; can't run both jackknife & bootstrap)
+                  num_bootstraps = 1000, 
+                  confidence_level = 0.95, 
+                  stratify = TRUE, 
+                  permute = TRUE, 
+                  num_permutations = 100, 
+                  window = 6, 
+                  valuetype = 'fixed', 
+                  case_insensitive = TRUE, 
+                  hard_cut = FALSE, 
+                  verbose = TRUE)
 
 #---------------------------------
 # visualize
 #---------------------------------
 
 # read results
-model1 <- readRDS('data/fg04_output.rds')
 model1@normed_coefficients
 
 # coefficient plot
-plot_tibble <- model1@normed_coefficients %>% mutate(coefficient = c("Trump", "Post_Election", "Trump x \n Post_Election")) %>% mutate(coefficient = factor(coefficient, levels = coefficient))
-fg4 <- ggplot(plot_tibble, aes(x = coefficient, y = normed.estimate)) +
+plot_tibble <- model1@normed_coefficients %>% 
+  mutate(coefficient = c("Trump", "Post_Election", "Trump x \n Post_Election")) %>% 
+  mutate(coefficient = factor(coefficient, levels = coefficient))
+
+ggplot(plot_tibble, aes(x = coefficient, y = normed.estimate)) +
   geom_pointrange(aes(ymin = lower.ci, ymax = upper.ci), size = 1) +
   labs(y = expression(paste('Norm of ', hat(beta),'s'))) +
   geom_text(aes(label=c('***', '***', '***')), position=position_dodge(width=0.9), hjust=0.5, vjust = c(0, 0, 0), size = 8) +
@@ -245,7 +176,5 @@ fg4 <- ggplot(plot_tibble, aes(x = coefficient, y = normed.estimate)) +
         axis.title.y = element_blank(),
         axis.title.x = element_text(size=20),
         plot.margin=unit(c(1,1,0,0),"cm"))
-
-ggsave(filename = "fg04.pdf", plot = fg4, height = 10, width = 12, path = './figures/', dpi = 1000)
 
 ```
