@@ -1,0 +1,243 @@
+---
+title: A Replication of _Embedding Regression -- Models for Context-Specific Description and Inference_ (Rodriguez et al., 2023)
+subtitle: "PPOL 6801: Text as Data: Computational Linguistics"
+author: "Bridgette Sullivan & Maria Bartlett"
+date: "April 3, 2025"
+format:
+  revealjs: 
+    theme: bootstrap.scss
+    embed-resources: true
+editor: visual
+---
+
+```{r}
+
+# clear global environment
+rm(list = ls())
+
+# set seed
+set.seed(12345)
+
+# load packages
+library(tidyverse)
+library(conText)
+library(quanteda)
+library(kableExtra)
+library(assertr)
+
+# set processing/display options
+options(mc.cores = parallel::detectCores())
+options(dplyr.summarise.inform = FALSE)
+options(warn = -1)
+
+# set relative paths
+root       <- file.path(getwd() %>% dirname())
+author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
+
+# define kable styling options
+kable_style <- function(df) {
+  
+  df %>%
+  kbl(full_width = T, 
+      align = "l",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("repeat_header","scale_down","HOLD_position")) 
+}
+
+```
+
+# Introduction
+
+## Background {.smaller}
+
+**Motivating idea:**
+
+Embeddings offer a compelling empirical technique to capture word _**context**_. Measures of context can help answer questions like:
+
+  - How has the meaning of a word changed through time?
+  
+  - How do different groups use the same word differently?
+
+**Motivating issues:**
+
+  1. Training embeddings is computationally expensive & words/phrases of interest for researchers often are highly specific and may not have much data on which to train embeddings 
+  
+  2. Current embedding techniques generally do not provide an inference mechanism (i.e., hypothesis testing)
+  
+## Authors' Contributions {.smaller}
+
+**Propose a framework that:**
+
+  - 1. Utilizes the à la carte method to efficiently produce context-specific embeddings
+  
+  - 2. Facilitates inferences about differences in embeddings across covariate values
+  
+**Illustrate via three use cases for framework:**
+
+  - 1. Do U.S. Democrats and Republicans attach different meanings to the same words?
+  
+  - 2. Did the word "empire" take on different meanings in the United States vs. United Kingdom after World War II?
+  
+  - 3. How did Parliament backbenchers feel about Brexit?
+
+# Methods
+
+## Framework structure {.smaller}
+
+1. Choose focal word(s) of interest from corpus
+
+2. Choose covariates of interest
+
+3. Use à la carte embeddings to estimate context-specific embeddings for focal word(s). This requires:
+
+  - Choosing a context window (e.g., 6)
+
+  - Pretrained embeddings (e.g., GloVe)
+
+    - **Why?** Computationally efficient because we don't have to train our own!
+
+  - Transformation matrix ($\hat{A}$)
+
+    - **Why?** Accounts for highly common words with little meaning
+   
+4. Regress context-specific embeddings on covariate(s) of interest 
+
+5. Norm returned $\hat{\beta}$ matrix for covariate(s) of interest
+
+6. Utilize bootstrapping and permutation testing to calculate _p_-values for inference
+
+## Framework walk-through
+
+Research question: Was the word “Trump” used differently post-2016 U.S. election relative to the word “Clinton”?
+
+# Results
+
+## Use case 1 {.smaller}
+
+**Question:** Do U.S. Democrats and Republicans attach different meanings to the same words?
+
+**Regression:** $Focal\_word\_embedding = \beta_0 + \beta_1Republican + \beta_2Male + \epsilon$
+
+  - Focal words: abortion, immigration, marriage
+  
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","case1.png"))
+
+```
+
+## Use case 2 {.smaller}
+
+**Question:** Did the word “empire” take on different meanings in the United States vs. United Kingdom after World War II?
+
+**Regression:** $Empire\_word\_embedding = \beta_0 + \beta_1CongressionalRecords + \epsilon$
+
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","02_beta_plot.png"))
+
+```
+
+## Use case 2 (cont.) {.smaller}
+
+### Nearest neighbors pre-1949:
+
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","02_pre1949_nearest_neighbors_plot.png"))
+
+```
+
+## Use case 2 (cont.) {.smaller}
+
+### Nearest neighbors post-1949:
+
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","02_post1949_nearest_neighbors_plot.png"))
+
+```
+
+# Autopsy/Differences 
+
+## Autopsy/Differences {.smaller}
+
+**Findings**: All results replicated (ran only a subset of analyses)
+
+**Code:**
+
+- Outdated functions:
+
+  - `geom_vline()` and `geom_hline()`: use `size` argument when `linewidth` should have been used
+  
+  - `conText()` `transform_matrix`: Jackknife and bootstrap both used when only one possible
+  
+- Code organization/repetition:
+
+  - Authors' separated code into shorter R scripts
+  
+    - Manageable chunks made interpretation easier
+    
+    - However, resulted in lots of repetition across scripts
+  
+  - When combining, we edited to ensure conciseness and eliminate repetition
+  
+## Autopsy/Differences (cont.) {.smaller}
+
+**Code:**
+
+- Inconsistent naming: 
+
+  - Naming was sometimes inconsistent across authors' scripts 
+  
+  - The same name was used for different dataframes
+  
+- Large file sizes resulted in longer run times
+
+# Extension
+
+## Extension: Validation {.smaller}
+
+- End of paper mentions methods to validate, but does not actually perform any validation
+
+**Validation via convergent construct (use case 2)**
+
+- Investigated validation methods cited from Quinn et al, 2010 paper
+
+- Determined that "convergent construct" validation would make the most sense 
+
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","02a_extension_image_01.png"))
+
+```
+
+## Extension: Sensitivity testing {.smaller}
+
+- The `conText()` regression has a variety of parameters; interested in how sensitive results were to different researcher parameter choices
+
+- In Trump vs. Clinton example, re-ran with `hard_cut` = TRUE in order to require that all articles in analysis had a context window of 6 on either side (i.e., precludes target word from being first word)
+
+- This choice significantly cut down sample size but findings were robust
+
+```{r fig.align = 'center'}
+
+knitr::include_graphics(file.path(root,"03_Replication","_images","sensitivity_test.png"))
+
+```
+
+## Extension: Future steps {.smaller}
+
+- Utilize other validation methods listed (semantic, predictive)
+
+- Further examine sensitivity of results to researcher decisions (context window, preprocessing, etc.)
+
+- Examine US vs. other countries usage of a word more currently relevant than “empire”
+
+## References {.smaller}
+
+Quinn, Kevin M., Burt L. Monroe, Michael Colaresi, Michael H. Crespin, and Dragomir R. Radev. 2010. “How to Analyze Political Attention with Minimal Assumptions and Costs.” *American Journal of Political Science* 54 (1): 209–28.
+
+Rodriguez, Pedro L., Arthur Spirling, and Brandon M. Stewart. 2023. "Embedding Regression: Models for Context-Specific Description and Inference." *American Political Science Review* 117 (4): 1255-1274. doi: 10.1017/S0003055422001228
+
+Rodriguez, Pedro L.; Spirling, Arthur; Stewart, Brandon M., 2023, "Replication Data for: Embedding Regression: Models for Context-Specific Description and Inference", https://doi.org/10.7910/DVN/NKETXF, Harvard Dataverse, V1, UNF:6:gBkWkhpPxkGmXEddHggmJQ== \[fileUNF\]
