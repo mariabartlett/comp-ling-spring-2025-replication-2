@@ -37,6 +37,7 @@ library(tidyverse)
 library(conText)
 library(quanteda)
 library(kableExtra)
+library(assertr)
 
 # set processing/display options
 options(mc.cores = parallel::detectCores())
@@ -71,22 +72,44 @@ kable_style <- function(df) {
 # --------------------------------
 
 # nyt corpus
-corpus_nyt <- readRDS(file.path(author_rep,"data","nyt_data.rds"))
+corpus_nyt <- readRDS(file.path(author_rep,"data","nyt_data.rds")) %>%
+  # data contains 3 million + articles 
+  verify(nrow(.) == 3032517 & ncol(.) == 6) %>%
+  verify(names(.) %in% c("snippet","lead_paragraph","web_url","date","year","month")) %>%
+  verify(min(year) == 1990 & max(year) == 2020) 
 
-# in 2018 lead_paragraph is missing
+# examine prevalence where lead paragraph is missing
+corpus_nyt %>% 
+  filter(is.na(lead_paragraph)) %>% 
+  count(year) %>%
+  kable_style()
+
+# impute lead paragraph with snippet when lead paragraph is missing
 corpus_nyt$lead_paragraph[is.na(corpus_nyt$lead_paragraph)] <- corpus_nyt$snippet[is.na(corpus_nyt$lead_paragraph)] 
+
+# re-examine prevalence where lead paragraph is missing (i.e., also no snippet)
+corpus_nyt %>% 
+  filter(is.na(lead_paragraph)) %>% 
+  count(year) %>%
+  kable_style()
 
 # pre-trained GloVe embeddings 
 pre_trained <- readRDS(file.path(author_rep,"data","stanford-glove","glove.rds"))
 
 # confirm GloVe is comprised of 300-dimension embeddings for 400,000 tokens
 stopifnot(nrow(pre_trained) == 400000 & ncol(pre_trained) == 300)
+
+# look at head of GloVe embeddings
+head(as.data.frame(pre_trained)) %>% kable_style()
  
 # pre-trained transformation matrix (A_hat)
 transform_matrix <- readRDS(file.path(author_rep,"data","stanford-glove","khodakA.rds"))
 
 # confirm transformation matrix is 300 x 300
 stopifnot(nrow(transform_matrix) == 300 & ncol(transform_matrix) == 300)
+
+# look at head of transformation matrix
+head(as.data.frame(transform_matrix)) %>% kable_style()
 
 ```
 
@@ -102,24 +125,48 @@ stopifnot(nrow(transform_matrix) == 300 & ncol(transform_matrix) == 300)
 # targets
 targets <- c('Trump', 'Clinton')
 
-# keep only documents where the target words appear
+# keep only documents where the target words appear: Trump
 trump_corpus <- corpus_nyt[grep('Trump', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), 
                            c('lead_paragraph', 'year')] %>% 
+  # 24,815 articles where 'Trump' appears in lead paragraph
+  verify(nrow(.) == 24815) %>%
   distinct(lead_paragraph, .keep_all = TRUE) %>% 
+  # 17,802 articles once duplicates are dropped (if duplicates, first year in which article appeared is retained)
+  verify(nrow(.) == 17802) %>%
   filter(year %in% c(2011:2014,2017:2020)) %>% 
+  # 11,675 articles once subset to period of interest
+  verify(nrow(.) == 11675) %>%
   rename(text = lead_paragraph) %>% 
   mutate(target = 'trump', 
-         year = as.integer(year)) # uppercase matters here
+         year   = as.integer(year)) # uppercase matters here
 
+# examine distribution of year in Trump articles
+count(trump_corpus, year) %>% kable_style()
+
+# keep only documents where the target words appear: Clinton
 clinton_corpus <- corpus_nyt[grep('Clinton', corpus_nyt$lead_paragraph, fixed = TRUE, ignore.case = FALSE), 
                              c('lead_paragraph', 'year')] %>% 
+  # 45,463 articles where 'Clinton' appears in lead paragraph
+  verify(nrow(.) == 45463) %>% 
   distinct(lead_paragraph, .keep_all = TRUE) %>% 
+  # 44,591 articles once duplicates are dropped (if duplicates, first year in which article appeared is retained)
+  verify(nrow(.) == 44591) %>%
   filter(year %in% c(2011:2014,2017:2020)) %>% 
+  # 1,622 articles once subset to period of interest
+  verify(nrow(.) == 1622) %>%
   rename(text = lead_paragraph) %>% 
   mutate(target = 'clinton', 
-         year = as.integer(year)) # uppercase matters here
+         year   = as.integer(year)) # uppercase matters here
 
+# examine distribution of year in Clinton articles
+count(clinton_corpus, year) %>% kable_style()
+
+# bind the two target word corpuses 
 sub_corpus <- rbind(trump_corpus, clinton_corpus)
+
+# examine distribution of articles in each corpus
+count(sub_corpus,target) %>% kable_style()
+count(sub_corpus,target,year) %>% kable_style()
 
 # basic preprocessing of text
 sub_corpus$text <- sub_corpus$text %>%
@@ -141,34 +188,40 @@ sub_corpus$text <- sub_corpus$text %>%
 #| code-fold: false
 
 # add dummy variables distinguishing pre-/post-election years and trump/clinton mentions
-sub_corpus <- sub_corpus %>% mutate(post_election = if_else(year>2014, 1L, 0L))
-sub_corpus <- sub_corpus %>% mutate(trump = if_else(target == 'trump', 1L, 0L))
-sub_corpus <- sub_corpus %>% mutate(interaction = trump*post_election)
+sub_corpus <- sub_corpus %>% 
+  mutate(post_election = if_else(year>2014, 1L, 0L),
+         trump         = if_else(target == 'trump', 1L, 0L)) %>%
+  mutate(interaction = trump*post_election)
+
+# check constructions
+count(sub_corpus,post_election,year) %>% kable_style()
+count(sub_corpus,trump,target) %>% kable_style()
+count(sub_corpus,interaction,trump,target) %>% kable_style()
 
 # transform into quanteda corpus
 sub_corpus <- corpus(sub_corpus$text, docvars = sub_corpus[,c("year", "target", "post_election", "trump", "interaction")])
-toks <- tokens(sub_corpus)
+toks       <- tokens(sub_corpus)
 
 # run regression
 set.seed(2022L)
 
-model1 <- conText(formula =  toi ~ trump + post_election + interaction, 
-                  data = toks, 
-                  pre_trained = pre_trained, 
-                  transform = TRUE, 
-                  transform_matrix = transform_matrix, 
-                  bootstrap = TRUE, 
-                  jackknife = FALSE,  # MB update: needed to explicitly update to jackknife = FALSE (default is true; can't run both jackknife & bootstrap)
-                  num_bootstraps = 1000, 
-                  confidence_level = 0.95, 
-                  stratify = TRUE, 
-                  permute = TRUE, 
-                  num_permutations = 100, 
-                  window = 6, 
-                  valuetype = 'fixed', 
-                  case_insensitive = TRUE, 
-                  hard_cut = FALSE, 
-                  verbose = FALSE)
+model1 <- conText(formula              = toi ~ trump + post_election + interaction, 
+                  data                 = toks,              # tokenized articles containing 'Trump' or 'Clinton'
+                  pre_trained          = pre_trained,       # GloVe pre-trained embeddings matrix
+                  transform            = TRUE,              # apply ALC transformation matrix (A_hat)
+                  transform_matrix     = transform_matrix,  # ALC transformation matrix (300x300)
+                  bootstrap            = TRUE,              # bootstrap SEs
+                  jackknife            = FALSE,  # MB update: needed to explicitly update to jackknife = FALSE 
+                                                 # (default is true; can't run both jackknife & bootstrap) -- authors plan to deprecate bootstrap soon
+                  num_bootstraps       = 1000,              # number of bootstraps to use 
+                  confidence_level     = 0.95,              # 95% confidence level
+                  stratify             = TRUE,              # stratify by covariates
+                  permute              = TRUE,              # use permutation testing for hypothesis testing
+                  num_permutations     = 100,               # number of permutations
+                  window               = 6,                 # number of tokens to look at on either side of keyword
+                  valuetype            = 'fixed',           # exact matching
+                  hard_cut             = FALSE,             # allows for target word to be first word
+                  verbose              = TRUE)              # report documents omitted because no features with pretrained embeddings
 
 # read results
 model1@normed_coefficients %>%
@@ -185,6 +238,57 @@ model1@normed_coefficients %>%
 
 # coefficient plot
 plot_tibble <- model1@normed_coefficients %>% 
+  mutate(coefficient = c("Trump", "Post_Election", "Trump x \n Post_Election")) %>% 
+  mutate(coefficient = factor(coefficient, levels = coefficient))
+
+ggplot(plot_tibble, aes(x = coefficient, y = normed.estimate)) +
+  geom_pointrange(aes(ymin = lower.ci, ymax = upper.ci), size = 1) +
+  labs(y = expression(paste('Norm of ', hat(beta),'s'))) +
+  geom_text(aes(label=c('***', '***', '***')), position=position_dodge(width=0.9), hjust=0.5, vjust = c(0, 0, 0), size = 8) +
+  coord_flip() +
+  ylim(0,0.6) +
+  theme(axis.text.x = element_text(size=18, vjust = 0.5, margin = margin(t = 15, r = 0, b = 15, l = 0)),
+        axis.text.y = element_text(size=18),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size=20),
+        plot.margin=unit(c(1,1,0,0),"cm"))
+
+```
+
+#### Sensitivity test (apply hard cut = TRUE) (MB + BS addition)
+
+```{r}
+#| warning: false
+#| output: asis
+#| code-fold: false
+
+# run regression
+set.seed(2023L)
+
+model2 <- conText(formula              = toi ~ trump + post_election + interaction, 
+                  data                 = toks,              # tokenized articles containing 'Trump' or 'Clinton'
+                  pre_trained          = pre_trained,       # GloVe pre-trained embeddings matrix
+                  transform            = TRUE,              # apply ALC transformation matrix (A_hat)
+                  transform_matrix     = transform_matrix,  # ALC transformation matrix (300x300)
+                  bootstrap            = TRUE,              # bootstrap SEs
+                  jackknife            = FALSE,  # MB update: needed to explicitly update to jackknife = FALSE 
+                                                 # (default is true; can't run both jackknife & bootstrap) -- authors plan to deprecate bootstrap soon
+                  num_bootstraps       = 1000,              # number of bootstraps to use 
+                  confidence_level     = 0.95,              # 95% confidence level
+                  stratify             = TRUE,              # stratify by covariates
+                  permute              = TRUE,              # use permutation testing for hypothesis testing
+                  num_permutations     = 100,               # number of permutations
+                  window               = 6,                 # number of tokens to look at on either side of keyword
+                  valuetype            = 'fixed',           # exact matching
+                  hard_cut             = TRUE,              # DO NOT allow for target word to be first word
+                  verbose              = TRUE)              # report documents omitted because no features with pretrained embeddings
+
+# read results
+model2@normed_coefficients %>%
+  kable_style()
+
+# coefficient plot
+plot_tibble <- model2@normed_coefficients %>% 
   mutate(coefficient = c("Trump", "Post_Election", "Trump x \n Post_Election")) %>% 
   mutate(coefficient = factor(coefficient, levels = coefficient))
 
