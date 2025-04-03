@@ -50,6 +50,41 @@ author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
 
 ```
 
+### Case 2: Extension
+
+#### Validation 1: Counts
+
+```{r}
+
+# load corpus
+empire_corpus <- readRDS(file.path(author_rep, "fg07_corpus.rds"))
+
+# pre-trained embeddings & transformation matrix (local)
+#pre_trained <- readRDS(file.path(author_rep, "word_vectors_6_300_5000.rds"))  # cr + ps pre-trained embeddings
+#transform_matrix <- readRDS(file.path(author_rep, "A_local.rds"))  # transformation matrix for cr + ps embeddings
+
+# convert empire corpus to df for plotting
+empire_text_df = convert(empire_corpus, to = 'data.frame')
+
+# create bar chart for counts by country group
+p = empire_text_df %>%
+  ggplot(aes(x = period, fill = group)) + 
+  geom_bar(position = 'dodge') + 
+  theme(axis.text.x=element_text(angle=90, hjust=1)) +
+  labs(title = "Count of 'Empire' in US v. UK", fill = 'Group') +
+  ylab("Count of 'Empire'") +
+  xlab("Time Period") 
+
+
+p
+```
+
+Validation 2: Cosine Similarity of Embeddings
+
+```{r}
+
+```
+
 ### Analysis 4: Sentiment
 
 Corpus
