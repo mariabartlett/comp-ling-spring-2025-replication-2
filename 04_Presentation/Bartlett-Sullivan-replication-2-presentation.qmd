@@ -122,7 +122,7 @@ Research question: Was the word “Trump” used differently post-2016 U.S. elec
   
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","case1.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","case1.png"))
 
 ```
 
@@ -134,7 +134,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_images","case1.png"))
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","02_beta_plot.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","02_beta_plot.png"))
 
 ```
 
@@ -144,7 +144,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_images","02_beta_plot.
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","02_pre1949_nearest_neighbors_plot.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","02_pre1949_nearest_neighbors_plot.png"))
 
 ```
 
@@ -154,7 +154,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_images","02_pre1949_ne
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","02_post1949_nearest_neighbors_plot.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","02_post1949_nearest_neighbors_plot.png"))
 
 ```
 
@@ -208,7 +208,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_images","02_post1949_n
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","02a_extension_image_01.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","02a_extension_image_01.png"))
 
 ```
 
@@ -222,7 +222,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_images","02a_extension
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_images","sensitivity_test.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","sensitivity_test.png"))
 
 ```
 
