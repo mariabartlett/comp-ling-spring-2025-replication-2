@@ -8,6 +8,105 @@ This repository includes materials to replicate key findings from **Rodriguez, P
 	
 ## Repository Structure & File Contents
 
+<table>
+	<thead>
+    		<tr>
+	      		<th>Folder</th>
+	      		<th>Folder Description</th>
+			<th>Included File</th>
+			<th>File Description</th>
+    		</tr>
+  	</thead>
+  	<tbody>
+    		<tr>
+        		<td><tt>01_OriginalPaper</tt></td>
+			<td>Includes readme file with link to original Rodriguez et al., 2023 paper </td>
+			<td><tt>readme.txt</tt></td>
+			<td>Links to original Rodriguez et al., 2023 paper</td>
+    		</tr>
+		<tr>
+        		<td><tt>02_DataverseMaterials/dataverse_files</tt></td>
+			<td>Includes readme file with link to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website</td>
+			<td><tt>readme.txt</tt></td>
+			<td>Links to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website</td>
+    		</tr>
+    		<tr>
+        		<td rowspan="10"><tt>03_Replication</tt></td>
+			<td rowspan="10">Includes Bartlett & Sullivan's replication materials</td>
+			<td><tt>00_alc_context_exemplar.qmd</tt></td>
+			<td>QMD script to replicate "Framework in Action"</td>
+    		</tr>
+    		<tr>
+        		</td><td><tt>00_alc_context_exemplar.html</tt></td>
+			<td>HTML output from running <tt>00_alc_context_exemplar.qmd</tt> script; presents code collated alongside output</td>
+		</tr>
+        <tr>
+        		</td><td><tt>01_use_case1_group_meanings.qmd</tt></td>
+			<td>QMD script to replicate framework use case 1</td>
+		</tr>
+        <tr>
+        		</td><td><tt>01_use_case1_group_meanings.html</tt></td>
+			<td>HTML output from running <tt>01_use_case1_group_meanings.qmd</tt> script; presents code collated alongside output</td>
+		</tr>
+        <tr>
+        		</td><td><tt>02_use_case2_temporal_changes.qmd</tt></td>
+			<td>QMD script to replicate framework use case 2</td>
+		</tr>
+        <tr>
+        		</td><td><tt>02_use_case2_temporal_changes.html</tt></td>
+			<td>HTML output from running <tt>02_use_case2_temporal_changes.qmd</tt> script; presents code collated alongside output</td>
+		</tr>
+        <tr>
+        		</td><td><tt>02a_use_case2_extension.qmd</tt></td>
+			<td>QMD script to execute validation</td>
+		</tr>
+        <tr>
+        		</td><td><tt>02a_use_case2_extension.html</tt></td>
+			<td>HTML output from running <tt>02a_use_case2_extension.qmd</tt> script; presents code collated alongside output</td>
+		</tr>
+		<tr>
+        		</td><td><tt>bootstrap.css</tt></td>
+			<td>CSS code called in QMD files for HTML formatting</td>
+		</tr>
+        <tr>
+        		</td><td><tt>/_plots</tt></td>
+			<td>Plots replicated from analyses; called in <tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt></td>
+		</tr>
+  		<tr>
+        		<td rowspan="5"><tt>04_Presentation</tt></td>
+			<td rowspan="5">Includes presentation materials</td>
+			<td><tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt></td>
+			<td>QMD script to produce presentation</td>
+    		</tr>
+    		<tr>
+        		</td><td><tt>Bartlett-Sullivan-replication-2-presentation.html</tt></td>
+			<td>Presentation given on 4/3/25</td>
+		</tr>
+        <tr>
+        		</td><td><tt>semantic_shift_walkthrough.qmd</tt></td>
+			<td>QMD walk-through of "Framework in action" as part of presentation (Rodriguez et al. analytic code + Bartlett, Sullivan formatting) </td>
+		</tr>
+        <tr>
+        		</td><td><tt>semantic_shift_walkthrough.html</tt></td>
+			<td>HTML output from running <tt>semantic_shift_walkthrough.qmd</tt></td>
+		</tr>
+		<tr>
+        		</td><td><tt>bootstrap.scss</tt></td>
+			<td>CSS code called in <tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt> for HTML formatting in <tt>Bartlett-Sullivan-replication-2-presentation.html</tt></td>
+		</tr>
+  		<tr>
+        		<td rowspan="2"><tt>05_FinalReport</tt></td>
+			<td rowspan="2">Includes final paper materials</td>
+			<td><tt>Bartlett-Sullivan-replication-2-paper.rmd</tt></td>
+			<td>RMD script to produce <tt>Bartlett-Sullivan-replication-2-paper.pdf</tt></td>
+    		</tr>
+    		<tr>
+        		</td><td><tt>Bartlett-Sullivan-replication-2-paper.pdf</tt></td>
+			<td>Bartlett & Sullivan final paper</td>
+		</tr>
+
+</table>
+
 ## Code Guidance
 
 ## Authors
