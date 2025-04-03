@@ -122,7 +122,7 @@ Research question: Was the word “Trump” used differently post-2016 U.S. elec
   
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_plots","case1.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","01_normed_betas.png"))
 
 ```
 
@@ -222,7 +222,7 @@ knitr::include_graphics(file.path(root,"03_Replication","_plots","02a_extension_
 
 ```{r fig.align = 'center'}
 
-knitr::include_graphics(file.path(root,"03_Replication","_plots","sensitivity_test.png"))
+knitr::include_graphics(file.path(root,"03_Replication","_plots","00_sensitivity_test.png"))
 
 ```
 
