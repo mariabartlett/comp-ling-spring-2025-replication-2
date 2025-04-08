@@ -4,8 +4,6 @@
 
 This repository includes materials to replicate key findings from **Rodriguez, Pedro L., Arthur Spirling, and Brandon M. Stewart. 2023. "Embedding Regression: Models for Context-Specific Description and Inference." *American Political Science Review* 117 (4): 1255-1274. doi: 10.1017/S0003055422001228.** It includes links to the original paper and authors' replication materials, our replication materials, and our findings presentation and report.
 
-## Research Goals
-	
 ## Repository Structure & File Contents
 
 <table>
@@ -106,8 +104,6 @@ This repository includes materials to replicate key findings from **Rodriguez, P
 		</tr>
 
 </table>
-
-## Code Guidance
 
 ## Authors
 
