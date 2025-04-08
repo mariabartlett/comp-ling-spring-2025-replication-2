@@ -23,10 +23,13 @@ This repository includes materials to replicate key findings from **Rodriguez, P
 			<td>Links to original Rodriguez et al., 2023 paper</td>
     		</tr>
 		<tr>
-        		<td><tt>02_DataverseMaterials/dataverse_files</tt></td>
-			<td>Includes readme file with link to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website</td>
+        		<td rowspan="2"><tt>02_DataverseMaterials/dataverse_files</tt></td>
+			<td rowspan="2">Includes readme file with link to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website; includes files for extension</td>
 			<td><tt>readme.txt</tt></td>
 			<td>Links to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website</td>
+    		</tr>
+            <td><tt>wv_*.csv</tt></td>
+			<td><tt>TEXT</td>
     		</tr>
     		<tr>
         		<td rowspan="10"><tt>03_Replication</tt></td>
