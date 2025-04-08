@@ -48,13 +48,9 @@ options(warn = -1)
 # set relative paths
 root       <- file.path(getwd() %>% dirname())
 author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
-
-author_rep  = "C:/Users/bridg/Documents/TAD"
-
-
 ```
 
-### Analysis 3: Empire
+### Case 2: Empire
 
 Build corpus
 
@@ -78,25 +74,27 @@ library(quanteda)
 # load data
 # --------------------------------
 
+# Commenting out reading in for reduction in rendering time
+
 # congressional record speeches with empire
-cr_data1 <- readRDS(file.path(author_rep, "data/corpus_full_cr_pre45.rds"))
-cr_data2 <- readRDS(file.path(author_rep, "data/corpus_full_cr_post45.rds"))
-cr_data_combined <- rbind(cr_data1, cr_data2)
-cr_data <- cr_data_combined %>% select(speech, period_start, period_end) %>% distinct(speech, .keep_all = TRUE) %>% tidyr::drop_na()
-cr_data <- cr_data[grepl('empire', cr_data$speech, ignore.case = TRUE),]
+#cr_data1 <- readRDS(file.path(author_rep, "data/corpus_full_cr_pre45.rds"))
+#cr_data2 <- readRDS(file.path(author_rep, "data/corpus_full_cr_post45.rds"))
+#cr_data_combined <- rbind(cr_data1, cr_data2)
+#cr_data <- cr_data_combined %>% select(speech, period_start, period_end) %>% distinct(speech, .keep_all = TRUE) %>% tidyr::drop_na()
+#cr_data <- cr_data[grepl('empire', cr_data$speech, ignore.case = TRUE),]
 
 # save data as csv for ease in reading in future
-fwrite(cr_data, file.path(author_rep, "data/cr_data_compressed.csv"))  # Save as CSV
-cr_data_compressed <- fread(file.path(author_rep, "data/cr_data_compressed.csv")) # Faster loading than readRDS
+#fwrite(cr_data, file.path(author_rep, "data/cr_data_compressed.csv"))  # Save as CSV
+cr_data_compressed <- fread(file.path(author_rep, "cr_data_compressed.csv")) # Faster loading than readRDS
 #head(cr_data_compressed)
 
 # parliamentary speeches
-ps_data <- readRDS(file.path(author_rep, "data/corpus_full_ps.rds")) %>% select(text, year) %>% distinct(text, .keep_all = TRUE) %>% tidyr::drop_na()
-ps_data <- ps_data[grepl('empire', ps_data$text, ignore.case = TRUE),]
+#ps_data <- readRDS(file.path(author_rep, "data/corpus_full_ps.rds")) %>% select(text, year) %>% distinct(text, .keep_all = TRUE) %>% tidyr::drop_na()
+#ps_data <- ps_data[grepl('empire', ps_data$text, ignore.case = TRUE),]
 
 # save data as csv for ease in reading in future
-fwrite(ps_data, file.path(author_rep, "data/ps_data_compressed.csv"))  # Save as CSV
-ps_data_compressed <- fread(file.path(author_rep, "data/ps_data_compressed.csv")) # Faster loading than readRDS
+#fwrite(ps_data, file.path(author_rep, "data/ps_data_compressed.csv"))  # Save as CSV
+ps_data_compressed <- fread(file.path(author_rep, "ps_data_compressed.csv")) # Faster loading than readRDS
 
 
 #---------------------------------
@@ -104,8 +102,8 @@ ps_data_compressed <- fread(file.path(author_rep, "data/ps_data_compressed.csv")
 #---------------------------------
 
 # congressional records
-cr <- cr_data %>%
-  filter(period_start >= min(ps_data$year) & period_end <= max(ps_data$year)) %>%
+cr <- cr_data_compressed %>%
+  filter(period_start >= min(ps_data_compressed$year) & period_end <= max(ps_data_compressed$year)) %>%
   mutate(period_end = period_end - 1,
          period = paste(period_start, period_end, sep = '-'),
          group = 'American',
@@ -113,11 +111,11 @@ cr <- cr_data %>%
   select(text, period, group)
 
 # parliamentary speeches
-period_start <- as.integer(unique(cr_data$period_start))
-period_end <- as.integer(unique(cr_data$period_end)) - 1
+period_start <- as.integer(unique(cr_data_compressed$period_start))
+period_end <- as.integer(unique(cr_data_compressed$period_end)) - 1
 period_labels <- paste(period_start, period_end, sep = "-")
 
-ps <- ps_data %>% mutate(period = NA, group = 'British')
+ps <- ps_data_compressed %>% mutate(period = NA, group = 'British')
 for(j in 1:length(period_labels)){
   ps$period[ps$year >= period_start[j] & ps$year <= period_end[j]] <- period_labels[j]
 }
@@ -129,124 +127,7 @@ empire_corpus <- rbind(cr, ps)
 
 # build quanteda corpus
 empire_corpus <- corpus(tolower(empire_corpus$text), docvars = data.frame(period = empire_corpus$period, group = empire_corpus$group))
-saveRDS(empire_corpus, "data/fg07_corpus.rds")
-
-```
-
-Estimate - DID NOT USE (waiting to delete)
-
-```{r}
-#| warning: false
-#| output: asis
-#| code-fold: false
-
-library(text2vec)
-library(dplyr)
-library(stringr)
-library(hunspell)
-
-# ================================
-# choice parameters
-# ================================
-WINDOW_SIZE <- 6
-DIM <- 300
-ITERS <- 25
-TERM_MAX <- 5000
-
-# ================================
-# define paths
-# ================================
-# set working directory to the location of the master "EmbeddingRegressionReplication" folder
-#setwd("")
-
-# ================================
-# load data
-# ================================
-cr <- cr_data_compressed %>% 
-  filter(period_start >= 1935 & period_end <= 2009) %>%
-  select(speech) %>% 
-  mutate(speech = iconv(speech, from = "latin1", to = "UTF-8")) %>%
-  distinct(speech, .keep_all = TRUE) %>% tidyr::drop_na() %>%
-  #group_by(session_id) %>%
-  sample_frac(size = 0.25) %>%
-  ungroup() %>% pull(speech)
-#rbind(cr_data1, cr_data2)
-#rm(cr_data1, cr_data2)
-
-ps <- ps_data_compressed %>%
-  filter(year >= 1935 & year <= 2009) %>%
-  select(text, year) %>% 
-  mutate(text = iconv(text, from = "latin1", to = "UTF-8")) %>%
-  distinct(text, .keep_all = TRUE) %>% tidyr::drop_na() %>%
-  group_by(year) %>%
-  sample_frac(size = 0.25) %>%
-  ungroup() %>% pull(text)
-
-# shuffle text
-set.seed(42L)
-text <- sample(c(cr, ps))
-#rm(cr,ps)
-
-# pre-porocessing
-text <- text %>% 
-  gsub("[^[:alpha:]]", " ", .) %>% # remove all non-alpha characters
-  str_replace_all("\\b\\w{1,2}\\b", "") %>% # remove 1-2 letter words
-  str_replace_all("^ +| +$|( ) +", "\\1") %>% # remove excess white space
-  tolower() %>% # lowercase
-  unique() # remove duplicates
-
-#head(text)
-
-# ================================
-# create vocab
-# ================================
-tokens <- space_tokenizer(text)
-it <- itoken_parallel(tokens, n_chunks = 6)
-vocab <- create_vocabulary(it)
-vocab_pruned <- prune_vocabulary(vocab, term_count_min = 10)  # keep only words that meet count threshold
-
-# rm misspelled words
-spellcheck_us <-  hunspell_check(toupper(vocab_pruned$term), dict = dictionary("en_US")) # remove incorrectly spelled words
-spellcheck_gb <-  hunspell_check(toupper(vocab_pruned$term), dict = dictionary("en_GB")) # remove incorrectly spelled words
-spellcheck <- spellcheck_us | spellcheck_gb
-vocab_pruned <- vocab_pruned[spellcheck,]
-
-# ================================
-# create term co-occurrence matrix
-# ================================
-vectorizer <- vocab_vectorizer(vocab_pruned)
-tcm <- create_tcm(it, vectorizer, skip_grams_window = WINDOW_SIZE, skip_grams_window_context = "symmetric", weights = rep(1, WINDOW_SIZE))
-
-# ================================
-# set model parameters
-# ================================
-glove <- GlobalVectors$new(rank = DIM,
-                           x_max = 100,
-                           learning_rate = 0.05)
-
-# ================================
-# fit model
-# ================================
-word_vectors_main <- glove$fit_transform(tcm,
-                                         n_iter = ITERS,
-                                         convergence_tol = 1e-3, 
-                                         #n_check_convergence = 1L,
-                                         n_threads = 6)
-
-# ================================
-# get output
-# ================================
-word_vectors_context <- glove$components
-word_vectors <- word_vectors_main + t(word_vectors_context) # word vectors
-
-# ================================
-# save
-# ================================
-saveRDS(word_vectors, file = "data/word_vectors_6_300_5000.rds")
-
-word_vectors = readRDS(file.path(author_rep,"data/word_vectors_6_300_5000.rds"))
-
-head(word_vectors)
+#saveRDS(empire_corpus, "data/fg07_corpus.rds")
 
 ```
 
@@ -275,7 +156,7 @@ library(quanteda)
 # --------------------------------
 
 # load corpus
-empire_corpus <- readRDS(file.path(author_rep, "data/fg07_corpus.rds"))
+#empire_corpus <- readRDS(file.path(author_rep, "data/fg07_corpus.rds"))
 
 # pre-trained embeddings & transformation matrix (local)
 pre_trained <- readRDS(file.path(author_rep, "data/word_vectors_6_300_5000.rds"))  # cr + ps pre-trained embeddings
@@ -295,14 +176,16 @@ toks_empire <- tokens_context(toks, "empire", window = 6L, valuetype = "fixed", 
 # conText regression
 #---------------------------------
 
+# Commented out for reduction in rendering time.
+
 # run regression for each period and user inner product
 set.seed(2022L)
-models <- lapply(unique(docvars(toks_empire, 'period')), function(j){
-  conText(formula =  . ~ group, data = tokens_subset(toks_empire, period == j), pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, stratify = TRUE, permute = TRUE, num_permutations = 100, window = 6L, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
-})
+# models <- lapply(unique(docvars(toks_empire, 'period')), function(j){
+#  conText(formula =  . ~ group, data = tokens_subset(toks_empire, period == j), pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, stratify = TRUE, permute = TRUE, num_permutations = 100, window = 6L, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
+# })
 
 # save output
-saveRDS(models, 'data/fg07_models.rds')
+#saveRDS(models, 'data/fg07_models.rds')
 
 #---------------------------------
 # plot
@@ -318,11 +201,11 @@ library(strucchange)
 
 ## F statistics indicates one breakpoint
 fs.norm <- Fstats(plot_tibble$normed.estimate ~ 1)
-plot(fs.norm)
-breakpoints(fs.norm)
-lines(breakpoints(fs.norm))
+#plot(fs.norm)
+#breakpoints(fs.norm)
+#lines(breakpoints(fs.norm))
 
-cat('breakpoint in period', plot_tibble$period[fs.norm$breakpoint])
+#cat('breakpoint in period', plot_tibble$period[fs.norm$breakpoint])
 
 # plot figure 7
 fg7 <- ggplot(plot_tibble) + 
@@ -344,7 +227,7 @@ fg7 <- ggplot(plot_tibble) +
 # show beta plot
 fg7
 
-ggsave(filename = file.path(author_rep, "fg07.pdf"), plot = fg7, height = 10, width = 15, path = './figures/', dpi = 1000)
+#ggsave(filename = file.path(author_rep, "fg07.pdf"), plot = fg7, height = 10, width = 15, path = './figures/', dpi = 1000)
 
 
 #---------------------------------
@@ -358,23 +241,25 @@ post <- setdiff(period, c(pre, "1949-1950"))
 # pre 1949 - 1950
 toks_empire_pre <- tokens_subset(toks_empire, period %in% pre)
 local_vocab_pre <- get_local_vocab(toks_empire_pre, pre_trained = pre_trained)
-empire_pre_nns_ratio <- get_nns_ratio(x = toks_empire_pre, groups =  docvars(toks_empire_pre, 'group'), N = 20, numerator = 'American', candidates = local_vocab_pre, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, stem = FALSE, verbose = TRUE)
+# comment out for reduction in rendering time
+#empire_pre_nns_ratio <- get_nns_ratio(x = toks_empire_pre, groups =  docvars(toks_empire_pre, 'group'), N = 20, numerator = 'American', candidates = local_vocab_pre, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, stem = FALSE, verbose = TRUE)
 #saveRDS(empire_pre_nns_ratio, "data/fg08a_output.rds")
 
 empire_pre_nns_ratio <- readRDS(file.path(author_rep, "data/fg08a_output.rds"))
 fg8a <- plot_nns_ratio(x = empire_pre_nns_ratio, horizontal = FALSE)
 fg8a
-ggsave(filename = file.path(author_rep, "fg08a.pdf"), plot = fg8a, height = 4, width = 8, path = './figures/', dpi = 1000)
+#ggsave(filename = file.path(author_rep, "fg08a.pdf"), plot = fg8a, height = 4, width = 8, path = './figures/', dpi = 1000)
 
 # post 1949 - 1950
 toks_empire_post <- tokens_subset(toks_empire, period %in% post)
 local_vocab_post <- get_local_vocab(toks_empire_post, pre_trained = pre_trained)
-empire_post_nns_ratio <- get_nns_ratio(x = toks_empire_post, groups =  docvars(toks_empire_post, 'group'), N = 20, numerator = 'American', candidates = local_vocab_post, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, stem = FALSE, verbose = TRUE)
+# comment out for reduction in rendering time
+#empire_post_nns_ratio <- get_nns_ratio(x = toks_empire_post, groups =  docvars(toks_empire_post, 'group'), N = 20, numerator = 'American', candidates = local_vocab_post, pre_trained = pre_trained, transform = TRUE, transform_matrix = transform_matrix, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, stem = FALSE, verbose = TRUE)
 #saveRDS(empire_post_nns_ratio, "data/fg08b_output.rds")
 
-empire_post_nns_ratio <- readRDS("data/fg08b_output.rds")
+empire_post_nns_ratio <- readRDS(file.path(author_rep, "data/fg08b_output.rds"))
 fg8b <- plot_nns_ratio(x = empire_post_nns_ratio, horizontal = FALSE)
 fg8b
-ggsave(filename = "fg08b.pdf", plot = fg8b, height = 4, width = 8, path = './figures/', dpi = 1000)
+#ggsave(filename = "fg08b.pdf", plot = fg8b, height = 4, width = 8, path = './figures/', dpi = 1000)
 
 ```
