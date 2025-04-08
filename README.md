@@ -29,7 +29,7 @@ This repository includes materials to replicate key findings from **Rodriguez, P
 			<td>Links to Rodriguez et al.'s paper replication materials hosted on Harvard Dataverse website</td>
     		</tr>
             <td><tt>wv_*.csv</tt></td>
-			<td><tt>TEXT</td>
+			<td><tt>Word embedding vectors for the focal word (empire) for Congressional Records (cr) and Parliamentary Speeches (ps) before (pre) and after (post) 1949 to use in cosine similarity calculation.</td>
     		</tr>
     		<tr>
         		<td rowspan="10"><tt>03_Replication</tt></td>
